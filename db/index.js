@@ -1,37 +1,171 @@
-//file that will make paths/functions for your front end to request from 
-// the backend and then the backend/this folder to go to the database.
+const { Client } = require('pg') // imports the pg module
 
+const client = new Client('postgres://localhost:5432/juicebox-dev');
 
-const { Client } = require('pg') // imports nodes postgresql adapter
-const client = new Client('postgres://localhost:5432/juicebox-dev');//suuplies location of the database and the server for the localhost.
-module.exports = { client, } //exports the client to a different file.
+/**
+ * USER Methods
+ */
 
-
-
-
-
-// defines a path for your front end to get all users that are created.
-async function getAllUsers() {
-    const { rows } = await client.query(
-        `SELECT id, username 
-      FROM users;
-    `);
-
-    return rows;
-}
-async function createUser({ username, password }) {
+async function createUser({
+    username,
+    password,
+    name,
+    location
+}) {
     try {
-        const { rows } = await client.query(`
-        INSERT INTO users(username, password) VALUES ($1, $2)
-        ON CONFLICT (username) DO NOTHING 
-        RETURNING *;
-      `, ["some_name", "some_password"]);
-        return rows
+        const { rows: [user] } = await client.query(`
+      INSERT INTO users(username, password, name, location) 
+      VALUES($1, $2, $3, $4) 
+      ON CONFLICT (username) DO NOTHING 
+      RETURNING *;
+    `, [username, password, name, location]);
+
+        return user;
     } catch (error) {
         throw error;
     }
-
 }
 
-//exports
-module.exports = { client, getAllUsers, createUser } //exports the client to a different file along with the users.
+async function updateUser(id, fields = {}) {
+    // build the set string
+    const setString = Object.keys(fields).map(
+        (key, index) => `"${key}"=$${index + 1}`
+    ).join(', ');
+
+    // return early if this is called without fields
+    if (setString.length === 0) {
+        return;
+    }
+
+    try {
+        const { rows: [user] } = await client.query(`
+      UPDATE users
+      SET ${ setString}
+      WHERE id=${ id}
+      RETURNING *;
+    `, Object.values(fields));
+
+        return user;
+    } catch (error) {
+        throw error;
+    }
+}
+
+async function getAllUsers() {
+    try {
+        const { rows } = await client.query(`
+      SELECT id, username, name, location, active 
+      FROM users;
+    `);
+
+        return rows;
+    } catch (error) {
+        throw error;
+    }
+}
+
+async function getUserById(userId) {
+    try {
+        const { rows: [user] } = await client.query(`
+      SELECT id, username, name, location, active
+      FROM users
+      WHERE id=${ userId}
+    `);
+
+        if (!user) {
+            return null
+        }
+
+        user.posts = await getPostsByUser(userId);
+
+        return user;
+    } catch (error) {
+        throw error;
+    }
+}
+
+/**
+ * POST Methods
+ */
+
+async function createPost({
+    authorId,
+    title,
+    content
+}) {
+    try {
+        const { rows: [post] } = await client.query(`
+      INSERT INTO posts("authorId", title, content) 
+      VALUES($1, $2, $3)
+      RETURNING *;
+    `, [authorId, title, content]);
+
+        return post;
+    } catch (error) {
+        throw error;
+    }
+}
+
+async function updatePost(id, fields = {}) {
+    // build the set string
+    const setString = Object.keys(fields).map(
+        (key, index) => `"${key}"=$${index + 1}`
+    ).join(', ');
+
+    // return early if this is called without fields
+    if (setString.length === 0) {
+        return;
+    }
+
+    try {
+        const { rows: [post] } = await client.query(`
+      UPDATE posts
+      SET ${ setString}
+      WHERE id=${ id}
+      RETURNING *;
+    `, Object.values(fields));
+
+        return post;
+    } catch (error) {
+        throw error;
+    }
+}
+
+async function getAllPosts() {
+    try {
+        const { rows } = await client.query(`
+      SELECT *
+      FROM posts;
+    `);
+
+        return rows;
+    } catch (error) {
+        throw error;
+    }
+}
+
+async function getPostsByUser(userId) {
+    try {
+        const { rows } = await client.query(`
+      SELECT * 
+      FROM posts
+      WHERE "authorId"=${ userId};
+    `);
+
+        return rows;
+    } catch (error) {
+        throw error;
+    }
+}
+
+module.exports = {
+    client,
+    createUser,
+    updateUser,
+    getAllUsers,
+    getUserById,
+    createPost,
+    updatePost,
+    getAllPosts,
+    getPostsByUser
+}//ports the client to a different file along with the users.
