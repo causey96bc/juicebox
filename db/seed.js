@@ -40,7 +40,7 @@ async function dropTables() {
         throw error;
     }
 }
-
+// creates the data tables used for the entire application
 async function createTables() {
     try {
         console.log("Starting to build tables...");
