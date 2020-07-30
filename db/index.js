@@ -339,6 +339,19 @@ async function getPostsByTagName(tagName) {
         throw error;
     }
 }
+async function getUserByUsername(username) {
+    try {
+        const { rows: [user] } = await client.query(`
+        SELECT *
+        FROM users
+        WHERE username=$1
+      `, [username]);
+
+        return user;
+    } catch (error) {
+        throw error;
+    }
+}
 // getpostbytagname 
 //updateposts
 //get userbyid
@@ -346,6 +359,7 @@ async function getPostsByTagName(tagName) {
 module.exports = {
     client,
     createUser,
+    getUserByUsername,
     updateUser,
     getAllUsers,
     getUserById,
