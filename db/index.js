@@ -296,7 +296,12 @@ async function getPostById(postId) {
         FROM posts
         WHERE id=$1;
       `, [postId]);
-
+        if (!post) {
+            throw {
+                name: 'postNotFound error',
+                message: 'could not find a post with that postId'
+            }
+        }
         const { rows: tags } = await client.query(`
         SELECT tags.*
         FROM tags
